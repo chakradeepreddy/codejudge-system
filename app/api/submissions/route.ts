@@ -11,11 +11,11 @@ const submissionSchema = z.object({
 
 type ExecutorResponse = {
   status:
-    | "accepted"
-    | "compilation_error"
-    | "runtime_error"
-    | "time_limit_exceeded"
-    | "internal_error";
+  | "accepted"
+  | "compilation_error"
+  | "runtime_error"
+  | "time_limit_exceeded"
+  | "internal_error";
   stdout: string;
   stderr: string;
   compileStdout?: string;
@@ -54,7 +54,7 @@ function estimateComplexity(sourceCode: string) {
   const code = sourceCode.replace(/\s+/g, " ").toLowerCase();
   const forCount = (code.match(/\bfor\s*\(/g) ?? []).length;
   const whileCount = (code.match(/\bwhile\s*\(/g) ?? []).length;
-  const nestedLoops = /for\s*\([^)]*\)\s*\{[^{}]*for\s*\(/s.test(code);
+  const nestedLoops = /for\s*\([^)]*\)[\s\S]*for\s*\(/.test(code);
   const usesHashMap = /unordered_map|unordered_set|map<|set</.test(code);
   const usesSort = /\bsort\s*\(/.test(code);
 
