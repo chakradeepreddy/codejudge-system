@@ -1,3 +1,5 @@
+import CodeEditor from "./components/code-editor";
+
 export default function Home() {
   return (
     <div className="min-h-screen text-slate-100">
@@ -65,14 +67,14 @@ Explanation: nums[0] + nums[1] == 9
           </div>
         </section>
 
-        <section className="panel lg:col-span-3">
+        <section className="panel lg:col-span-3 lg:flex lg:min-h-0 lg:flex-col">
           <div className="panel-header">
             <div className="flex items-center gap-2">
               <span className="rounded-md border border-white/15 bg-white/5 px-2 py-1 text-xs text-slate-300">
-                TypeScript
+                C++
               </span>
               <span className="hidden text-xs text-slate-500 sm:inline">
-                main.ts
+                main.cpp
               </span>
             </div>
             <div className="flex items-center gap-2">
@@ -84,25 +86,11 @@ Explanation: nums[0] + nums[1] == 9
               </button>
             </div>
           </div>
-          <div className="editor-shell mt-4">
-            <pre className="h-full overflow-auto p-4 text-sm leading-6 text-slate-200">
-{`function twoSum(nums: number[], target: number): number[] {
-  const seen = new Map<number, number>();
-
-  for (let i = 0; i < nums.length; i++) {
-    const complement = target - nums[i];
-    if (seen.has(complement)) {
-      return [seen.get(complement)!, i];
-    }
-    seen.set(nums[i], i);
-  }
-
-  return [];
-}`}
-            </pre>
+          <div className="editor-shell mt-4 lg:min-h-0 lg:flex-1">
+            <CodeEditor />
           </div>
           <div className="mt-4 rounded-lg border border-white/10 bg-slate-900/70 p-3 text-xs text-slate-300">
-            Console: Ready. Monaco Editor integration comes in the next step.
+            Console: Ready.
           </div>
         </section>
       </main>

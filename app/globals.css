@@ -41,9 +41,16 @@ body {
 }
 
 .editor-shell {
-  min-height: 360px;
+  min-height: 55vh;
   border-radius: 0.75rem;
   border: 1px solid rgba(148, 163, 184, 0.18);
   background-color: rgba(2, 6, 23, 0.9);
   font-family: var(--font-mono), monospace;
+  overflow: hidden;
+}
+
+@media (min-width: 1024px) {
+  .editor-shell {
+    min-height: 0;
+  }
 }
