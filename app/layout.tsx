@@ -17,6 +17,16 @@ export const metadata: Metadata = {
   description: "Production-style coding interview and contest platform",
 };
 
+const themeScript = `
+(() => {
+  const key = "codejudge-theme";
+  const saved = localStorage.getItem(key);
+  const preferredDark = window.matchMedia("(prefers-color-scheme: dark)").matches;
+  const theme = saved || (preferredDark ? "dark" : "light");
+  document.documentElement.setAttribute("data-theme", theme);
+})();
+`;
+
 export default function RootLayout({
   children,
 }: Readonly<{
@@ -26,8 +36,13 @@ export default function RootLayout({
     <html
       lang="en"
       className={`${geistSans.variable} ${geistMono.variable} h-full antialiased`}
+      suppressHydrationWarning
+      data-theme="dark"
     >
-      <body className="min-h-full flex flex-col">{children}</body>
+      <body className="min-h-full flex flex-col">
+        <script dangerouslySetInnerHTML={{ __html: themeScript }} />
+        {children}
+      </body>
     </html>
   );
 }

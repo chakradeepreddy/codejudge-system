@@ -43,12 +43,12 @@ export default function AuthForm({ mode }: AuthFormProps) {
   }
 
   return (
-    <div className="w-full max-w-md rounded-2xl border border-white/10 bg-slate-950/70 p-6 shadow-2xl shadow-black/20 backdrop-blur">
+    <div className="w-full max-w-md rounded-2xl border border-token bg-[var(--panel-bg-a)] p-6 shadow-2xl shadow-black/10 backdrop-blur">
       <div className="mb-6 space-y-1">
-        <h1 className="text-2xl font-semibold text-white">
+        <h1 className="text-2xl font-semibold text-token-primary">
           {isLogin ? "Welcome back" : "Create your account"}
         </h1>
-        <p className="text-sm text-slate-400">
+        <p className="text-sm text-token-secondary">
           {isLogin
             ? "Login to continue solving problems."
             : "Sign up to start coding challenges."}
@@ -57,26 +57,26 @@ export default function AuthForm({ mode }: AuthFormProps) {
 
       <form className="space-y-4" onSubmit={handleSubmit}>
         <label className="block space-y-2">
-          <span className="text-sm text-slate-300">Email</span>
+          <span className="text-sm text-token-secondary">Email</span>
           <input
             required
             type="email"
             value={email}
             onChange={(event) => setEmail(event.target.value)}
-            className="w-full rounded-lg border border-white/15 bg-slate-900 px-3 py-2.5 text-sm text-slate-100 outline-none ring-cyan-400/40 transition focus:ring"
+            className="w-full rounded-lg border border-token bg-[var(--editor-bg)] px-3 py-2.5 text-sm text-token-primary outline-none ring-cyan-400/40 transition focus:ring"
             placeholder="you@example.com"
           />
         </label>
 
         <label className="block space-y-2">
-          <span className="text-sm text-slate-300">Password</span>
+          <span className="text-sm text-token-secondary">Password</span>
           <input
             required
             minLength={6}
             type="password"
             value={password}
             onChange={(event) => setPassword(event.target.value)}
-            className="w-full rounded-lg border border-white/15 bg-slate-900 px-3 py-2.5 text-sm text-slate-100 outline-none ring-cyan-400/40 transition focus:ring"
+            className="w-full rounded-lg border border-token bg-[var(--editor-bg)] px-3 py-2.5 text-sm text-token-primary outline-none ring-cyan-400/40 transition focus:ring"
             placeholder="Minimum 6 characters"
           />
         </label>
@@ -102,7 +102,7 @@ export default function AuthForm({ mode }: AuthFormProps) {
         </button>
       </form>
 
-      <p className="mt-5 text-sm text-slate-400">
+      <p className="mt-5 text-sm text-token-secondary">
         {isLogin ? "New to CodeJudge?" : "Already have an account?"} {" "}
         <Link
           href={isLogin ? "/signup" : "/login"}

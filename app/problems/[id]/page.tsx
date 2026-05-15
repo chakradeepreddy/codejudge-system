@@ -1,7 +1,6 @@
-import Link from "next/link";
 import { notFound, redirect } from "next/navigation";
 import CodeEditor from "@/app/components/code-editor";
-import SignOutButton from "@/app/components/auth/sign-out-button";
+import AppHeader from "@/app/components/layout/app-header";
 import { createClient } from "@/lib/supabase/server";
 
 type Problem = {
@@ -47,7 +46,6 @@ export default async function ProblemDetailsPage({
     .from("problems")
     .select("id,title,statement,difficulty,tags,constraints_text,sample_explanation")
     .eq("id", id)
-    .eq("is_published", true)
     .single();
 
   if (problemError || !problem) {
@@ -70,36 +68,13 @@ export default async function ProblemDetailsPage({
   const exampleRows = (examples ?? []) as ExampleCase[];
 
   return (
-    <div className="min-h-screen text-slate-100">
-      <header className="sticky top-0 z-50 border-b border-white/10 bg-slate-950/80 backdrop-blur-xl">
-        <div className="mx-auto flex h-16 w-full max-w-[1600px] items-center justify-between px-4 sm:px-6">
-          <div className="flex items-center gap-3">
-            <div className="flex h-9 w-9 items-center justify-center rounded-lg border border-cyan-300/25 bg-cyan-400/10 text-sm font-semibold text-cyan-300">
-              CJ
-            </div>
-            <div>
-              <p className="text-sm font-semibold tracking-wide text-slate-100">
-                CodeJudge
-              </p>
-              <p className="text-xs text-slate-400">Problem Workspace</p>
-            </div>
-          </div>
-          <div className="flex items-center gap-3">
-            <Link
-              href="/problems"
-              className="rounded-md border border-white/15 px-3 py-2 text-sm text-slate-300 transition hover:border-white/30 hover:text-white"
-            >
-              Back to List
-            </Link>
-            <SignOutButton />
-          </div>
-        </div>
-      </header>
+    <div className="min-h-screen text-token-primary">
+      <AppHeader subtitle="Problem Workspace" userEmail={user.email} />
 
       <main className="mx-auto grid w-full max-w-[1600px] gap-4 p-4 sm:p-6 lg:h-[calc(100vh-4rem)] lg:grid-cols-5">
         <section className="panel overflow-auto lg:col-span-2">
           <div className="panel-header">
-            <h1 className="text-lg font-semibold text-white">{problemData.title}</h1>
+            <h1 className="text-lg font-semibold text-token-primary">{problemData.title}</h1>
             <span
               className={`rounded-full border px-2.5 py-1 text-xs font-medium ${difficultyStyles[problemData.difficulty]}`}
             >
@@ -109,7 +84,7 @@ export default async function ProblemDetailsPage({
 
           <div className="mt-4 flex flex-wrap gap-2">
             {problemData.tags.length === 0 ? (
-              <span className="text-xs text-slate-500">No tags</span>
+              <span className="text-xs text-token-secondary">No tags</span>
             ) : (
               problemData.tags.map((tag) => (
                 <span
@@ -122,25 +97,25 @@ export default async function ProblemDetailsPage({
             )}
           </div>
 
-          <div className="mt-5 space-y-5 text-sm leading-7 text-slate-300">
+          <div className="mt-5 space-y-5 text-sm leading-7 text-token-secondary">
             <div>
-              <h2 className="mb-2 text-sm font-semibold text-slate-100">Statement</h2>
+              <h2 className="mb-2 text-sm font-semibold text-token-primary">Statement</h2>
               <p className="whitespace-pre-wrap">{problemData.statement}</p>
             </div>
 
             {exampleRows.length > 0 ? (
               <div>
-                <h2 className="mb-2 text-sm font-semibold text-slate-100">Examples</h2>
+                <h2 className="mb-2 text-sm font-semibold text-token-primary">Examples</h2>
                 <div className="space-y-3">
                   {exampleRows.map((example, index) => (
                     <div
                       key={example.id}
-                      className="rounded-lg border border-white/10 bg-slate-900/80 p-3"
+                      className="rounded-lg border border-token bg-black/10 p-3"
                     >
-                      <p className="mb-2 text-xs font-medium text-slate-400">
+                      <p className="mb-2 text-xs font-medium text-token-secondary">
                         Example {index + 1}
                       </p>
-                      <pre className="overflow-auto text-xs text-slate-300">
+                      <pre className="overflow-auto text-xs text-token-secondary">
 Input:
 {example.input_data}
 
@@ -155,7 +130,7 @@ Output:
 
             {problemData.constraints_text ? (
               <div>
-                <h2 className="mb-2 text-sm font-semibold text-slate-100">
+                <h2 className="mb-2 text-sm font-semibold text-token-primary">
                   Constraints
                 </h2>
                 <p className="whitespace-pre-wrap">{problemData.constraints_text}</p>
@@ -164,7 +139,7 @@ Output:
 
             {problemData.sample_explanation ? (
               <div>
-                <h2 className="mb-2 text-sm font-semibold text-slate-100">
+                <h2 className="mb-2 text-sm font-semibold text-token-primary">
                   Explanation
                 </h2>
                 <p className="whitespace-pre-wrap">{problemData.sample_explanation}</p>
@@ -176,10 +151,10 @@ Output:
         <section className="panel lg:col-span-3 lg:flex lg:min-h-0 lg:flex-col">
           <div className="panel-header">
             <div className="flex items-center gap-2">
-              <span className="rounded-md border border-white/15 bg-white/5 px-2 py-1 text-xs text-slate-300">
+              <span className="rounded-md border border-token bg-black/10 px-2 py-1 text-xs text-token-secondary">
                 C++
               </span>
-              <span className="hidden text-xs text-slate-500 sm:inline">main.cpp</span>
+              <span className="hidden text-xs text-token-secondary sm:inline">main.cpp</span>
             </div>
             <button className="rounded-md bg-cyan-400 px-3 py-1.5 text-xs font-semibold text-slate-950 transition hover:bg-cyan-300">
               Submit

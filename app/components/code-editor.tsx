@@ -1,6 +1,6 @@
 "use client";
 
-import { useMemo, useState } from "react";
+import { useEffect, useMemo, useState } from "react";
 import Editor from "@monaco-editor/react";
 
 type SupportedLanguage = "cpp" | "typescript";
@@ -59,8 +59,27 @@ const STARTER_CODE: Record<SupportedLanguage, string> = {
   typescript: DEFAULT_TS_CODE,
 };
 
+function resolveTheme() {
+  if (typeof document === "undefined") return "vs-dark";
+  return document.documentElement.getAttribute("data-theme") === "light"
+    ? "vs"
+    : "vs-dark";
+}
+
 export default function CodeEditor({ language = "cpp" }: CodeEditorProps) {
   const [code, setCode] = useState(STARTER_CODE[language]);
+  const [monacoTheme, setMonacoTheme] = useState<"vs" | "vs-dark">(() =>
+    resolveTheme()
+  );
+
+  useEffect(() => {
+    function handleThemeChange() {
+      setMonacoTheme(resolveTheme());
+    }
+
+    window.addEventListener("themechange", handleThemeChange);
+    return () => window.removeEventListener("themechange", handleThemeChange);
+  }, []);
 
   const options = useMemo(
     () => ({
@@ -79,12 +98,12 @@ export default function CodeEditor({ language = "cpp" }: CodeEditorProps) {
     <Editor
       height="100%"
       language={language}
-      theme="vs-dark"
+      theme={monacoTheme}
       value={code}
       onChange={(value) => setCode(value ?? "")}
       options={options}
       loading={
-        <div className="flex h-full items-center justify-center text-sm text-slate-400">
+        <div className="flex h-full items-center justify-center text-sm text-token-secondary">
           Loading editor...
         </div>
       }
