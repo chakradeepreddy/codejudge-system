@@ -7,6 +7,9 @@ type SupportedLanguage = "cpp" | "typescript";
 
 type CodeEditorProps = {
   language?: SupportedLanguage;
+  value?: string;
+  onChange?: (nextCode: string) => void;
+  initialCode?: string;
 };
 
 const DEFAULT_CPP_CODE = `#include <bits/stdc++.h>
@@ -27,12 +30,19 @@ vector<int> twoSum(vector<int>& nums, int target) {
 }
 
 int main() {
-    vector<int> nums = {2, 7, 11, 15};
-    int target = 9;
+    int n;
+    cin >> n;
+    vector<int> nums(n);
+    for (int i = 0; i < n; i++) {
+        cin >> nums[i];
+    }
+    int target;
+    cin >> target;
+
     auto ans = twoSum(nums, target);
 
     if (ans.empty()) {
-        cout << "No answer\\n";
+        cout << "-1 -1\\n";
     } else {
         cout << ans[0] << " " << ans[1] << "\\n";
     }
@@ -66,8 +76,19 @@ function resolveTheme() {
     : "vs-dark";
 }
 
-export default function CodeEditor({ language = "cpp" }: CodeEditorProps) {
-  const [code, setCode] = useState(STARTER_CODE[language]);
+export function getStarterCode(language: SupportedLanguage = "cpp") {
+  return STARTER_CODE[language];
+}
+
+export default function CodeEditor({
+  language = "cpp",
+  value,
+  onChange,
+  initialCode,
+}: CodeEditorProps) {
+  const [internalCode, setInternalCode] = useState(
+    initialCode ?? STARTER_CODE[language]
+  );
   const [monacoTheme, setMonacoTheme] = useState<"vs" | "vs-dark">(() =>
     resolveTheme()
   );
@@ -80,6 +101,16 @@ export default function CodeEditor({ language = "cpp" }: CodeEditorProps) {
     window.addEventListener("themechange", handleThemeChange);
     return () => window.removeEventListener("themechange", handleThemeChange);
   }, []);
+
+
+  const editorValue = value ?? internalCode;
+
+  function handleCodeChange(next: string) {
+    if (value === undefined) {
+      setInternalCode(next);
+    }
+    onChange?.(next);
+  }
 
   const options = useMemo(
     () => ({
@@ -99,8 +130,8 @@ export default function CodeEditor({ language = "cpp" }: CodeEditorProps) {
       height="100%"
       language={language}
       theme={monacoTheme}
-      value={code}
-      onChange={(value) => setCode(value ?? "")}
+      value={editorValue}
+      onChange={(nextValue) => handleCodeChange(nextValue ?? "")}
       options={options}
       loading={
         <div className="flex h-full items-center justify-center text-sm text-token-secondary">

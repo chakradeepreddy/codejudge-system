@@ -1,6 +1,6 @@
 import { notFound, redirect } from "next/navigation";
-import CodeEditor from "@/app/components/code-editor";
 import AppHeader from "@/app/components/layout/app-header";
+import ProblemWorkspace from "@/app/components/problem-workspace";
 import { createClient } from "@/lib/supabase/server";
 
 type Problem = {
@@ -148,23 +148,7 @@ Output:
           </div>
         </section>
 
-        <section className="panel lg:col-span-3 lg:flex lg:min-h-0 lg:flex-col">
-          <div className="panel-header">
-            <div className="flex items-center gap-2">
-              <span className="rounded-md border border-token bg-black/10 px-2 py-1 text-xs text-token-secondary">
-                C++
-              </span>
-              <span className="hidden text-xs text-token-secondary sm:inline">main.cpp</span>
-            </div>
-            <button className="rounded-md bg-cyan-400 px-3 py-1.5 text-xs font-semibold text-slate-950 transition hover:bg-cyan-300">
-              Submit
-            </button>
-          </div>
-
-          <div className="editor-shell mt-4 lg:min-h-0 lg:flex-1">
-            <CodeEditor language="cpp" />
-          </div>
-        </section>
+        <ProblemWorkspace problemId={problemData.id} />
       </main>
     </div>
   );
