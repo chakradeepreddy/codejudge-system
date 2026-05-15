@@ -1,4 +1,4 @@
-export type Language = "cpp";
+export type Language = "cpp" | "python" | "javascript" | "java";
 
 export type ExecuteRequest = {
   language: Language;

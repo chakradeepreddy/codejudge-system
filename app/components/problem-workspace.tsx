@@ -1,7 +1,10 @@
 "use client";
 
 import { useMemo, useState } from "react";
-import CodeEditor, { getStarterCode } from "@/app/components/code-editor";
+import CodeEditor, {
+  getStarterCode,
+  type SupportedLanguage,
+} from "@/app/components/code-editor";
 
 type VerdictResponse = {
   action?: "run" | "submit";
@@ -79,8 +82,8 @@ export default function ProblemWorkspace({
   examples,
   initialHistory = [],
 }: ProblemWorkspaceProps) {
-  const starterCode = getStarterCode("cpp");
-  const [code, setCode] = useState(starterCode);
+  const [language, setLanguage] = useState<SupportedLanguage>("cpp");
+  const [code, setCode] = useState(getStarterCode("cpp"));
   const [loading, setLoading] = useState(false);
   const [result, setResult] = useState<VerdictResponse | null>(null);
   const [history, setHistory] = useState<SubmissionHistoryItem[]>(initialHistory);
@@ -122,7 +125,7 @@ export default function ProblemWorkspace({
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({
           problemId,
-          language: "cpp",
+          language,
           sourceCode: code,
           action,
         }),
@@ -282,18 +285,44 @@ export default function ProblemWorkspace({
       <section className="panel lg:col-span-3 lg:flex lg:min-h-0 lg:flex-col">
         <div className="panel-header">
           <div className="flex items-center gap-2">
-            <span className="rounded-md border border-token bg-black/10 px-2 py-1 text-xs text-token-secondary">C++</span>
-            <span className="hidden text-xs text-token-secondary sm:inline">main.cpp</span>
+            <select
+              value={language}
+              onChange={(event) => {
+                const nextLanguage = event.target.value as SupportedLanguage;
+                setLanguage(nextLanguage);
+                setCode(getStarterCode(nextLanguage));
+              }}
+              className="rounded-md border border-token bg-black/10 px-2 py-1 text-xs text-token-secondary"
+            >
+              <option value="cpp">C++</option>
+              <option value="python">Python</option>
+              <option value="javascript">JavaScript</option>
+              <option value="java">Java</option>
+            </select>
+            <span className="hidden text-xs text-token-secondary sm:inline">
+              {language === "cpp"
+                ? "Main.cpp"
+                : language === "python"
+                  ? "main.py"
+                  : language === "javascript"
+                    ? "main.js"
+                    : "Main.java"}
+            </span>
           </div>
           <div className="flex items-center gap-2">
-            <button onClick={() => setCode(starterCode)} className="rounded-md border border-token px-3 py-1.5 text-xs text-token-secondary transition hover:text-token-primary">Reset</button>
+            <button
+              onClick={() => setCode(getStarterCode(language))}
+              className="rounded-md border border-token px-3 py-1.5 text-xs text-token-secondary transition hover:text-token-primary"
+            >
+              Reset
+            </button>
             <button onClick={() => judge("run")} disabled={loading} className="rounded-md border border-token px-3 py-1.5 text-xs text-token-secondary transition hover:text-token-primary disabled:opacity-60">{loading ? "Running..." : "Run Code"}</button>
             <button onClick={() => judge("submit")} disabled={loading} className="rounded-md bg-cyan-400 px-3 py-1.5 text-xs font-semibold text-slate-950 transition hover:bg-cyan-300 disabled:opacity-60">{loading ? "Submitting..." : "Submit"}</button>
           </div>
         </div>
 
         <div className="editor-shell mt-4 lg:min-h-0 lg:flex-1">
-          <CodeEditor language="cpp" value={code} onChange={setCode} />
+          <CodeEditor language={language} value={code} onChange={setCode} />
         </div>
 
         <div className="mt-4 rounded-lg border border-token bg-black/10 p-3 text-xs text-token-secondary">

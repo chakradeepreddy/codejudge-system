@@ -4,7 +4,7 @@ import { createClient } from "@/lib/supabase/server";
 
 const submissionSchema = z.object({
   problemId: z.string().uuid(),
-  language: z.enum(["cpp"]),
+  language: z.enum(["cpp", "python", "javascript", "java"]),
   sourceCode: z.string().min(1).max(100000),
   action: z.enum(["run", "submit"]).default("submit"),
 });

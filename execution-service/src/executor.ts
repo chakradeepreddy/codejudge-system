@@ -5,7 +5,7 @@ import path from "node:path";
 import { spawn } from "node:child_process";
 import { performance } from "node:perf_hooks";
 import { config } from "./config.js";
-import type { ExecuteRequest, ExecuteResponse } from "./types.js";
+import type { ExecuteRequest, ExecuteResponse, Language } from "./types.js";
 
 type ProcessResult = {
   stdout: string;
@@ -14,9 +14,45 @@ type ProcessResult = {
   timedOut: boolean;
 };
 
+type LanguageSpec = {
+  sourceFileName: string;
+  image: string;
+  compileCommand?: string;
+  runCommand: string;
+};
+
+const LANGUAGE_SPECS: Record<Language, LanguageSpec> = {
+  cpp: {
+    sourceFileName: "Main.cpp",
+    image: "gcc:14",
+    compileCommand:
+      "g++ -std=c++17 -O2 -pipe -o /workspace/main /workspace/Main.cpp > /workspace/compile.stdout 2> /workspace/compile.stderr || exit 2",
+    runCommand: "/workspace/main",
+  },
+  python: {
+    sourceFileName: "main.py",
+    image: "python:3.12-bookworm",
+    runCommand: "python3 /workspace/main.py",
+  },
+  javascript: {
+    sourceFileName: "main.js",
+    image: "node:20-bookworm",
+    runCommand: "node /workspace/main.js",
+  },
+  java: {
+    sourceFileName: "Main.java",
+    image: "eclipse-temurin:21-jdk",
+    compileCommand:
+      "javac /workspace/Main.java > /workspace/compile.stdout 2> /workspace/compile.stderr || exit 2",
+    runCommand: "java -cp /workspace Main",
+  },
+};
+
 async function runCommand(command: string[], timeoutMs: number): Promise<ProcessResult> {
   return new Promise((resolve, reject) => {
-    const proc = spawn(command[0], command.slice(1), { stdio: ["ignore", "pipe", "pipe"] });
+    const proc = spawn(command[0], command.slice(1), {
+      stdio: ["ignore", "pipe", "pipe"],
+    });
     let stdout = "";
     let stderr = "";
     let timedOut = false;
@@ -50,7 +86,7 @@ function executionTimeoutSec(): number {
   return Math.max(1, Math.ceil(config.executionTimeoutMs / 1000));
 }
 
-function dockerCommand(workspaceDir: string, timeoutSec: number): string[] {
+function dockerCommand(workspaceDir: string, timeoutSec: number, image: string): string[] {
   const mem = `${config.memoryLimitMb}m`;
   const cpus = String(config.cpus);
 
@@ -79,20 +115,21 @@ function dockerCommand(workspaceDir: string, timeoutSec: number): string[] {
     `${workspaceDir}:/workspace:rw`,
     "-w",
     "/workspace",
-    config.image,
+    image,
     "bash",
     "-lc",
-    `timeout ${timeoutSec}s bash /workspace/run.sh`
+    `timeout ${timeoutSec + 1}s bash /workspace/run.sh`,
   ];
 }
 
 export async function executeCode(payload: ExecuteRequest): Promise<ExecuteResponse> {
-  if (payload.language !== "cpp") {
+  const spec = LANGUAGE_SPECS[payload.language];
+  if (!spec) {
     return {
       status: "internal_error",
       stdout: "",
       stderr: "Unsupported language",
-      durationMs: 0
+      durationMs: 0,
     };
   }
 
@@ -100,32 +137,51 @@ export async function executeCode(payload: ExecuteRequest): Promise<ExecuteRespo
   const started = performance.now();
 
   try {
-    const sourcePath = path.join(baseDir, "main.cpp");
+    const sourcePath = path.join(baseDir, spec.sourceFileName);
     const inputPath = path.join(baseDir, "input.txt");
     const runPath = path.join(baseDir, "run.sh");
 
-    await fs.writeFile(sourcePath, payload.sourceCode, { encoding: "utf8", mode: 0o600 });
+    await fs.writeFile(sourcePath, payload.sourceCode, {
+      encoding: "utf8",
+      mode: 0o600,
+    });
     await fs.writeFile(inputPath, payload.input, { encoding: "utf8", mode: 0o600 });
-    const runTimeoutSec = executionTimeoutSec();
 
-    await fs.writeFile(
-      runPath,
-      [
-        "#!/usr/bin/env bash",
-        "set -euo pipefail",
-        "g++ -std=c++17 -O2 -pipe -o /workspace/main /workspace/main.cpp > /workspace/compile.stdout 2> /workspace/compile.stderr || exit 2",
-        `timeout ${runTimeoutSec}s /workspace/main < /workspace/input.txt > /workspace/stdout.txt 2> /workspace/stderr.txt`
-      ].join("\n"),
-      { encoding: "utf8", mode: 0o700 }
+    const runTimeoutSec = executionTimeoutSec();
+    const scriptLines = ["#!/usr/bin/env bash", "set -euo pipefail"];
+
+    if (spec.compileCommand) {
+      scriptLines.push(spec.compileCommand);
+    } else {
+      scriptLines.push(
+        "touch /workspace/compile.stdout /workspace/compile.stderr"
+      );
+    }
+
+    scriptLines.push(
+      `timeout ${runTimeoutSec}s ${spec.runCommand} < /workspace/input.txt > /workspace/stdout.txt 2> /workspace/stderr.txt`
     );
 
-    const docker = dockerCommand(baseDir, runTimeoutSec + 1);
-    const processResult = await runCommand(docker, config.executionTimeoutMs + 1500);
+    await fs.writeFile(runPath, scriptLines.join("\n"), {
+      encoding: "utf8",
+      mode: 0o700,
+    });
 
-    const compileStdout = await fs.readFile(path.join(baseDir, "compile.stdout"), "utf8").catch(() => "");
-    const compileStderr = await fs.readFile(path.join(baseDir, "compile.stderr"), "utf8").catch(() => "");
-    const stdout = await fs.readFile(path.join(baseDir, "stdout.txt"), "utf8").catch(() => processResult.stdout);
-    const stderr = await fs.readFile(path.join(baseDir, "stderr.txt"), "utf8").catch(() => processResult.stderr);
+    const docker = dockerCommand(baseDir, runTimeoutSec, spec.image);
+    const processResult = await runCommand(docker, config.executionTimeoutMs + 2500);
+
+    const compileStdout = await fs
+      .readFile(path.join(baseDir, "compile.stdout"), "utf8")
+      .catch(() => "");
+    const compileStderr = await fs
+      .readFile(path.join(baseDir, "compile.stderr"), "utf8")
+      .catch(() => "");
+    const stdout = await fs
+      .readFile(path.join(baseDir, "stdout.txt"), "utf8")
+      .catch(() => processResult.stdout);
+    const stderr = await fs
+      .readFile(path.join(baseDir, "stderr.txt"), "utf8")
+      .catch(() => processResult.stderr);
 
     const durationMs = Math.round(performance.now() - started);
 
@@ -137,7 +193,7 @@ export async function executeCode(payload: ExecuteRequest): Promise<ExecuteRespo
         compileStdout,
         compileStderr,
         exitCode: processResult.exitCode,
-        durationMs
+        durationMs,
       };
     }
 
@@ -149,7 +205,7 @@ export async function executeCode(payload: ExecuteRequest): Promise<ExecuteRespo
         compileStdout,
         compileStderr,
         exitCode: processResult.exitCode,
-        durationMs
+        durationMs,
       };
     }
 
@@ -161,7 +217,7 @@ export async function executeCode(payload: ExecuteRequest): Promise<ExecuteRespo
         compileStdout,
         compileStderr,
         exitCode: processResult.exitCode,
-        durationMs
+        durationMs,
       };
     }
 
@@ -172,7 +228,7 @@ export async function executeCode(payload: ExecuteRequest): Promise<ExecuteRespo
       compileStdout,
       compileStderr,
       exitCode: processResult.exitCode,
-      durationMs
+      durationMs,
     };
   } catch (error) {
     const durationMs = Math.round(performance.now() - started);
@@ -180,7 +236,7 @@ export async function executeCode(payload: ExecuteRequest): Promise<ExecuteRespo
       status: "internal_error",
       stdout: "",
       stderr: error instanceof Error ? error.message : "Unknown execution error",
-      durationMs
+      durationMs,
     };
   } finally {
     await fs.rm(baseDir, { recursive: true, force: true });
