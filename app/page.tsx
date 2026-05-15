@@ -1,6 +1,18 @@
+import SignOutButton from "@/app/components/auth/sign-out-button";
 import CodeEditor from "./components/code-editor";
+import { createClient } from "@/lib/supabase/server";
+import { redirect } from "next/navigation";
 
-export default function Home() {
+export default async function Home() {
+  const supabase = await createClient();
+  const {
+    data: { user },
+  } = await supabase.auth.getUser();
+
+  if (!user) {
+    redirect("/login");
+  }
+
   return (
     <div className="min-h-screen text-slate-100">
       <header className="sticky top-0 z-50 border-b border-white/10 bg-slate-950/80 backdrop-blur-xl">
@@ -20,9 +32,10 @@ export default function Home() {
             <span className="rounded-md border border-emerald-400/25 bg-emerald-500/10 px-3 py-1 text-xs font-medium text-emerald-300">
               Server: Healthy
             </span>
-            <button className="rounded-md border border-white/15 px-3 py-2 text-sm text-slate-300 transition hover:border-white/30 hover:text-white">
-              Sign In
-            </button>
+            <span className="max-w-[180px] truncate text-sm text-slate-400">
+              {user.email}
+            </span>
+            <SignOutButton />
             <button className="rounded-md bg-cyan-400 px-3 py-2 text-sm font-semibold text-slate-950 transition hover:bg-cyan-300">
               Run Code
             </button>
