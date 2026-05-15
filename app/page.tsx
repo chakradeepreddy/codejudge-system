@@ -97,7 +97,7 @@ export default async function Home() {
           sampleExplanation={p.sample_explanation}
           tags={p.tags}
           examples={(examples ?? []) as ExampleCase[]}
-          initialHistory={(initialHistory ?? []) as SubmissionHistoryItem[]}
+          initialHistory={(initialHistory ?? []) as unknown as SubmissionHistoryItem[]}
         />
       </main>
     </div>
