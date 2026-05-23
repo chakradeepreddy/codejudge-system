@@ -33,10 +33,17 @@ app.post("/execute", async (req, res) => {
   return res.json(result);
 });
 
-app.use((err: unknown, _req: express.Request, res: express.Response) => {
-  const message = err instanceof Error ? err.message : "Unknown error";
-  return res.status(500).json({ error: message });
-});
+app.use(
+  (
+    err: unknown,
+    _req: express.Request,
+    res: express.Response,
+    _next: express.NextFunction
+  ) => {
+    const message = err instanceof Error ? err.message : "Unknown error";
+    return res.status(500).json({ error: message });
+  }
+);
 
 app.listen(config.port, () => {
   console.log(`Execution service listening on :${config.port}`);
