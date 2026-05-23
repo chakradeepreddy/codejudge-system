@@ -8,6 +8,7 @@ import CodeEditor, {
 
 type VerdictResponse = {
   action?: "run" | "submit";
+  mode?: "custom-input";
   submissionId?: string | null;
   verdict: string;
   passedTestCases: number;
@@ -22,6 +23,18 @@ type VerdictResponse = {
     spaceComplexity: string;
     suggestions: string[];
   };
+  testCaseResults?: {
+    testCaseId: string;
+    isHidden: boolean;
+    passed: boolean;
+    runtimeMs: number;
+    status: string;
+    input: string;
+    expectedOutput: string | null;
+    actualOutput: string;
+    stderr: string;
+    compileStderr: string;
+  }[];
 };
 
 type SubmissionHistoryItem = {
@@ -36,6 +49,23 @@ type SubmissionHistoryItem = {
   source_code: string;
   submitted_at: string;
   problems: { title: string } | null;
+  test_results?: {
+    testCaseId: string;
+    isHidden: boolean;
+    passed: boolean;
+    runtimeMs: number;
+    status: string;
+    input: string;
+    expectedOutput: string | null;
+    actualOutput: string;
+    stderr: string;
+    compileStderr: string;
+  }[] | null;
+  analysis?: {
+    timeComplexity: string;
+    spaceComplexity: string;
+    suggestions: string[];
+  } | null;
 };
 
 type ExampleCase = {
@@ -89,6 +119,7 @@ export default function ProblemWorkspace({
   const [history, setHistory] = useState<SubmissionHistoryItem[]>(initialHistory);
   const [selectedSubmission, setSelectedSubmission] = useState<SubmissionHistoryItem | null>(null);
   const [leftTab, setLeftTab] = useState<"problem" | "submissions" | "hints" | "topics">("problem");
+  const [customInput, setCustomInput] = useState("");
 
   const hints = useMemo(() => {
     const base = [
@@ -128,6 +159,7 @@ export default function ProblemWorkspace({
           language,
           sourceCode: code,
           action,
+          customInput,
         }),
       });
 
@@ -330,16 +362,57 @@ export default function ProblemWorkspace({
             <p>Console: Ready to run or submit your solution.</p>
           ) : (
             <div className="space-y-2">
-              <p>
-                {result.action === "run" ? "Run" : "Submit"} Verdict: <span className="font-semibold text-token-primary">{result.verdict}</span>
-              </p>
-              <p>Passed: {result.passedTestCases}/{result.totalTestCases} | Runtime: {result.runtimeMs} ms</p>
+              <p>{result.action === "run" ? "Run" : "Submit"} Verdict: <span className="font-semibold text-token-primary">{result.verdict}</span></p>
+              {result.mode === "custom-input" ? (
+                <p>Custom input execution | Runtime: {result.runtimeMs} ms</p>
+              ) : (
+                <p>Passed: {result.passedTestCases}/{result.totalTestCases} | Runtime: {result.runtimeMs} ms</p>
+              )}
               {result.error ? <p className="text-rose-400">Error: {result.error}</p> : null}
               {result.compileStderr ? <pre className="max-h-32 overflow-auto rounded border border-token bg-black/20 p-2">{result.compileStderr}</pre> : null}
               {result.stderr ? <pre className="max-h-32 overflow-auto rounded border border-token bg-black/20 p-2">{result.stderr}</pre> : null}
               {result.stdout ? <pre className="max-h-32 overflow-auto rounded border border-token bg-black/20 p-2">{result.stdout}</pre> : null}
+              {result.testCaseResults && result.testCaseResults.length > 0 ? (
+                <div className="overflow-x-auto">
+                  <table className="mt-2 w-full min-w-[560px] text-left text-[11px]">
+                    <thead className="text-token-secondary">
+                      <tr className="border-b border-token">
+                        <th className="px-2 py-1.5">Case</th>
+                        <th className="px-2 py-1.5">Type</th>
+                        <th className="px-2 py-1.5">Status</th>
+                        <th className="px-2 py-1.5">Result</th>
+                        <th className="px-2 py-1.5">Runtime</th>
+                      </tr>
+                    </thead>
+                    <tbody>
+                      {result.testCaseResults.map((tc, index) => (
+                        <tr key={`${tc.testCaseId}-${index}`} className="border-b border-token/40">
+                          <td className="px-2 py-1.5 text-token-primary">#{index + 1}</td>
+                          <td className="px-2 py-1.5 text-token-secondary">{tc.isHidden ? "Hidden" : "Sample"}</td>
+                          <td className="px-2 py-1.5 text-token-secondary">{tc.status}</td>
+                          <td className={`px-2 py-1.5 font-semibold ${tc.passed ? "text-emerald-300" : "text-amber-300"}`}>{tc.passed ? "Pass" : "Fail"}</td>
+                          <td className="px-2 py-1.5 text-token-secondary">{tc.runtimeMs} ms</td>
+                        </tr>
+                      ))}
+                    </tbody>
+                  </table>
+                </div>
+              ) : null}
             </div>
           )}
+        </div>
+
+        <div className="mt-4 rounded-lg border border-token bg-black/10 p-3">
+          <label className="mb-2 block text-xs font-medium text-token-primary">Custom Input (used by Run Code only)</label>
+          <textarea
+            value={customInput}
+            onChange={(event) => setCustomInput(event.target.value)}
+            placeholder={`Example:\n4\n2 7 11 15\n9`}
+            className="min-h-24 w-full resize-y rounded-md border border-token bg-black/20 p-2 text-xs text-token-secondary outline-none focus:border-cyan-400/60"
+          />
+          <p className="mt-2 text-[11px] text-token-secondary">
+            Keep empty to run against up to 3 sample test cases. Submit always runs against full hidden set.
+          </p>
         </div>
       </section>
 
@@ -360,6 +433,46 @@ export default function ProblemWorkspace({
             </div>
             {selectedSubmission.compile_output ? <pre className="mt-3 max-h-28 overflow-auto rounded border border-token bg-black/20 p-2 text-xs text-token-secondary">{selectedSubmission.compile_output}</pre> : null}
             {selectedSubmission.error_output ? <pre className="mt-3 max-h-28 overflow-auto rounded border border-token bg-black/20 p-2 text-xs text-token-secondary">{selectedSubmission.error_output}</pre> : null}
+            {selectedSubmission.analysis ? (
+              <div className="mt-3 rounded border border-token bg-black/20 p-2 text-xs text-token-secondary">
+                <p className="font-medium text-token-primary">Complexity Analysis</p>
+                <p>Time: {selectedSubmission.analysis.timeComplexity}</p>
+                <p>Space: {selectedSubmission.analysis.spaceComplexity}</p>
+                {selectedSubmission.analysis.suggestions.length > 0 ? (
+                  <ul className="mt-1 list-disc pl-4">
+                    {selectedSubmission.analysis.suggestions.map((suggestion) => (
+                      <li key={suggestion}>{suggestion}</li>
+                    ))}
+                  </ul>
+                ) : null}
+              </div>
+            ) : null}
+            {selectedSubmission.test_results && selectedSubmission.test_results.length > 0 ? (
+              <div className="mt-3 overflow-x-auto">
+                <table className="w-full min-w-[560px] text-left text-[11px]">
+                  <thead className="text-token-secondary">
+                    <tr className="border-b border-token">
+                      <th className="px-2 py-1.5">Case</th>
+                      <th className="px-2 py-1.5">Type</th>
+                      <th className="px-2 py-1.5">Status</th>
+                      <th className="px-2 py-1.5">Result</th>
+                      <th className="px-2 py-1.5">Runtime</th>
+                    </tr>
+                  </thead>
+                  <tbody>
+                    {selectedSubmission.test_results.map((tc, index) => (
+                      <tr key={`${tc.testCaseId}-${index}`} className="border-b border-token/40">
+                        <td className="px-2 py-1.5 text-token-primary">#{index + 1}</td>
+                        <td className="px-2 py-1.5 text-token-secondary">{tc.isHidden ? "Hidden" : "Sample"}</td>
+                        <td className="px-2 py-1.5 text-token-secondary">{tc.status}</td>
+                        <td className={`px-2 py-1.5 font-semibold ${tc.passed ? "text-emerald-300" : "text-amber-300"}`}>{tc.passed ? "Pass" : "Fail"}</td>
+                        <td className="px-2 py-1.5 text-token-secondary">{tc.runtimeMs} ms</td>
+                      </tr>
+                    ))}
+                  </tbody>
+                </table>
+              </div>
+            ) : null}
             <pre className="mt-3 max-h-56 overflow-auto rounded border border-token bg-black/20 p-2 text-xs text-token-secondary">{selectedSubmission.source_code}</pre>
           </div>
         </div>

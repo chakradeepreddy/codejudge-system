@@ -25,6 +25,7 @@ export default function AppHeader({ userEmail, subtitle, rightSlot }: AppHeaderP
         <nav className="hidden items-center gap-2 md:flex">
           <Link href="/" className="nav-link">Workspace</Link>
           <Link href="/problems" className="nav-link">Problems</Link>
+          <Link href="/leaderboard" className="nav-link">Leaderboard</Link>
         </nav>
 
         <div className="flex items-center gap-2 sm:gap-3">

@@ -31,6 +31,23 @@ type SubmissionHistoryItem = {
   source_code: string;
   submitted_at: string;
   problems: { title: string } | null;
+  test_results?: {
+    testCaseId: string;
+    isHidden: boolean;
+    passed: boolean;
+    runtimeMs: number;
+    status: string;
+    input: string;
+    expectedOutput: string | null;
+    actualOutput: string;
+    stderr: string;
+    compileStderr: string;
+  }[] | null;
+  analysis?: {
+    timeComplexity: string;
+    spaceComplexity: string;
+    suggestions: string[];
+  } | null;
 };
 
 export default async function ProblemDetailsPage({
@@ -70,7 +87,7 @@ export default async function ProblemDetailsPage({
   const { data: initialHistory } = await supabase
     .from("submissions")
     .select(
-      "id,language,verdict,passed_test_cases,total_test_cases,runtime_ms,compile_output,error_output,source_code,submitted_at,problems(title)"
+      "id,language,verdict,passed_test_cases,total_test_cases,runtime_ms,compile_output,error_output,source_code,submitted_at,test_results,analysis,problems(title)"
     )
     .eq("user_id", user.id)
     .eq("problem_id", id)

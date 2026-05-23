@@ -40,6 +40,7 @@ app.use(
     res: express.Response,
     _next: express.NextFunction
   ) => {
+    void _next;
     const message = err instanceof Error ? err.message : "Unknown error";
     return res.status(500).json({ error: message });
   }

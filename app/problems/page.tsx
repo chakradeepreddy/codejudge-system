@@ -18,7 +18,13 @@ const difficultyStyles: Record<ProblemRow["difficulty"], string> = {
   HARD: "text-rose-300 bg-rose-500/10 border-rose-400/25",
 };
 
-export default async function ProblemsPage() {
+export default async function ProblemsPage({
+  searchParams,
+}: {
+  searchParams?: Promise<{ difficulty?: string }>;
+}) {
+  const resolvedSearchParams = searchParams ? await searchParams : undefined;
+  const difficultyFilter = resolvedSearchParams?.difficulty;
   const supabase = await createClient();
   const {
     data: { user },
@@ -38,6 +44,10 @@ export default async function ProblemsPage() {
   }
 
   const problemRows = (problems ?? []) as ProblemRow[];
+  const publishedRows = problemRows.filter((problem) => problem.is_published);
+  const filteredRows = difficultyFilter
+    ? publishedRows.filter((problem) => problem.difficulty === difficultyFilter)
+    : publishedRows;
 
   return (
     <div className="min-h-screen text-token-primary">
@@ -47,7 +57,16 @@ export default async function ProblemsPage() {
         <div className="panel">
           <div className="panel-header">
             <h1 className="text-lg font-semibold text-token-primary">Coding Problems</h1>
-            <span className="text-xs text-token-secondary">{problemRows.length} total</span>
+            <span className="text-xs text-token-secondary">
+              {filteredRows.length} shown / {publishedRows.length} published
+            </span>
+          </div>
+
+          <div className="mt-4 flex flex-wrap gap-2">
+            <Link href="/problems" className="rounded-md border border-token px-3 py-1.5 text-xs text-token-secondary hover:text-token-primary">All</Link>
+            <Link href="/problems?difficulty=EASY" className="rounded-md border border-emerald-400/30 bg-emerald-500/10 px-3 py-1.5 text-xs text-emerald-300">Easy</Link>
+            <Link href="/problems?difficulty=MEDIUM" className="rounded-md border border-amber-400/30 bg-amber-500/10 px-3 py-1.5 text-xs text-amber-300">Medium</Link>
+            <Link href="/problems?difficulty=HARD" className="rounded-md border border-rose-400/30 bg-rose-500/10 px-3 py-1.5 text-xs text-rose-300">Hard</Link>
           </div>
 
           <div className="mt-4 overflow-x-auto">
@@ -61,7 +80,7 @@ export default async function ProblemsPage() {
                 </tr>
               </thead>
               <tbody>
-                {problemRows.length === 0 ? (
+                {filteredRows.length === 0 ? (
                   <tr>
                     <td className="px-3 py-8 text-sm text-token-secondary" colSpan={4}>
                       No problems found yet.
@@ -77,7 +96,7 @@ values (
                     </td>
                   </tr>
                 ) : null}
-                {problemRows.map((problem) => (
+                {filteredRows.map((problem) => (
                   <tr
                     key={problem.id}
                     className="rounded-lg border border-token bg-[var(--row-bg)] transition hover:bg-[var(--row-hover)]"

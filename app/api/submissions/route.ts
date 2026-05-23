@@ -7,6 +7,7 @@ const submissionSchema = z.object({
   language: z.enum(["cpp", "python", "javascript", "java"]),
   sourceCode: z.string().min(1).max(100000),
   action: z.enum(["run", "submit"]).default("submit"),
+  customInput: z.string().max(20000).optional(),
 });
 
 type ExecutorResponse = {
@@ -30,6 +31,19 @@ type JudgeVerdict =
   | "RUNTIME_ERROR"
   | "COMPILATION_ERROR"
   | "SYSTEM_ERROR";
+
+type TestCaseResult = {
+  testCaseId: string;
+  isHidden: boolean;
+  passed: boolean;
+  runtimeMs: number;
+  status: ExecutorResponse["status"];
+  input: string;
+  expectedOutput: string | null;
+  actualOutput: string;
+  stderr: string;
+  compileStderr: string;
+};
 
 function normalizeOutput(value: string) {
   return value.replace(/\r\n/g, "\n").trimEnd();
@@ -108,7 +122,7 @@ export async function POST(req: Request) {
     return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
   }
 
-  const { problemId, language, sourceCode, action } = parsed.data;
+  const { problemId, language, sourceCode, action, customInput } = parsed.data;
 
   let testCaseQuery = supabase
     .from("test_cases")
@@ -163,6 +177,51 @@ export async function POST(req: Request) {
   let finalStdout = "";
   let finalStderr = "";
   let finalCompileStderr = "";
+  const testCaseResults: TestCaseResult[] = [];
+
+  if (action === "run" && customInput && customInput.trim().length > 0) {
+    const controller = new AbortController();
+    const timeout = setTimeout(() => controller.abort(), 10_000);
+
+    try {
+      const execRes = await fetch(`${executionServiceUrl}/execute`, {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+          language,
+          sourceCode,
+          input: customInput,
+        }),
+        signal: controller.signal,
+      });
+
+      const execData = (await execRes.json()) as ExecutorResponse;
+      finalStdout = execData.stdout;
+      finalStderr = execData.stderr;
+      finalCompileStderr = execData.compileStderr ?? "";
+      runtimeMs = execData.durationMs;
+      verdict = execRes.ok ? mapVerdict(execData.status) : "SYSTEM_ERROR";
+    } catch {
+      verdict = "SYSTEM_ERROR";
+    } finally {
+      clearTimeout(timeout);
+    }
+
+    return NextResponse.json({
+      action,
+      mode: "custom-input",
+      submissionId,
+      verdict,
+      passedTestCases: 0,
+      totalTestCases: 0,
+      runtimeMs,
+      stdout: finalStdout,
+      stderr: finalStderr,
+      compileStderr: finalCompileStderr,
+      analysis: estimateComplexity(sourceCode),
+      testCaseResults,
+    });
+  }
 
   for (const testCase of selectedCases) {
     const controller = new AbortController();
@@ -185,6 +244,24 @@ export async function POST(req: Request) {
       finalStdout = execData.stdout;
       finalStderr = execData.stderr;
       finalCompileStderr = execData.compileStderr ?? "";
+      const isOutputMatch =
+        execData.status === "accepted" &&
+        normalizeOutput(execData.stdout) === normalizeOutput(testCase.expected_output);
+      const visibleExpectedOutput =
+        action === "run" || !testCase.is_hidden ? testCase.expected_output : null;
+
+      testCaseResults.push({
+        testCaseId: testCase.id,
+        isHidden: testCase.is_hidden,
+        passed: isOutputMatch,
+        runtimeMs: execData.durationMs,
+        status: execData.status,
+        input: testCase.input_data,
+        expectedOutput: visibleExpectedOutput,
+        actualOutput: execData.stdout,
+        stderr: execData.stderr,
+        compileStderr: execData.compileStderr ?? "",
+      });
 
       if (!execRes.ok) {
         verdict = "SYSTEM_ERROR";
@@ -215,6 +292,7 @@ export async function POST(req: Request) {
   }
 
   if (action === "submit" && submissionId) {
+    const analysis = estimateComplexity(sourceCode);
     await supabase
       .from("submissions")
       .update({
@@ -224,6 +302,8 @@ export async function POST(req: Request) {
         runtime_ms: runtimeMs,
         compile_output: finalCompileStderr,
         error_output: finalStderr,
+        test_results: testCaseResults,
+        analysis,
       })
       .eq("id", submissionId);
   }
@@ -241,6 +321,7 @@ export async function POST(req: Request) {
     stderr: finalStderr,
     compileStderr: finalCompileStderr,
     analysis,
+    testCaseResults,
   });
 }
 
@@ -260,7 +341,7 @@ export async function GET(req: Request) {
   let query = supabase
     .from("submissions")
     .select(
-      "id,problem_id,language,verdict,passed_test_cases,total_test_cases,runtime_ms,compile_output,error_output,source_code,submitted_at,problems(title)"
+      "id,problem_id,language,verdict,passed_test_cases,total_test_cases,runtime_ms,compile_output,error_output,source_code,submitted_at,test_results,analysis,problems(title)"
     )
     .eq("user_id", user.id)
     .order("submitted_at", { ascending: false })
