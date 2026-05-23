@@ -1,6 +1,7 @@
 import Link from "next/link";
 import AppHeader from "@/app/components/layout/app-header";
 import { createClient } from "@/lib/supabase/server";
+import { ensureSeedProblems } from "@/lib/seed-problems";
 import { redirect } from "next/navigation";
 
 type ProblemRow = {
@@ -33,6 +34,8 @@ export default async function ProblemsPage({
   if (!user) {
     redirect("/login");
   }
+
+  await ensureSeedProblems(supabase);
 
   const { data: problems, error } = await supabase
     .from("problems")
@@ -77,12 +80,13 @@ export default async function ProblemsPage({
                   <th className="px-3 py-2">Difficulty</th>
                   <th className="px-3 py-2">Status</th>
                   <th className="px-3 py-2">Tags</th>
+                  <th className="px-3 py-2">Action</th>
                 </tr>
               </thead>
               <tbody>
                 {filteredRows.length === 0 ? (
                   <tr>
-                    <td className="px-3 py-8 text-sm text-token-secondary" colSpan={4}>
+                    <td className="px-3 py-8 text-sm text-token-secondary" colSpan={5}>
                       No problems found yet.
                       <pre className="mt-3 overflow-auto rounded-lg border border-token bg-black/10 p-3 text-xs text-token-secondary">{`insert into public.problems (slug, title, statement, difficulty, is_published, tags)
 values (
@@ -103,7 +107,7 @@ values (
                   >
                     <td className="px-3 py-3">
                       <Link
-                        href={`/problems/${problem.id}`}
+                        href={`/problems/${problem.slug}`}
                         className="font-medium text-token-primary hover:text-cyan-300"
                       >
                         {problem.title}
@@ -142,6 +146,14 @@ values (
                           ))
                         )}
                       </div>
+                    </td>
+                    <td className="px-3 py-3">
+                      <Link
+                        href={`/problems/${problem.slug}`}
+                        className="rounded-md border border-cyan-400/30 bg-cyan-500/10 px-3 py-1 text-xs font-medium text-cyan-200 hover:bg-cyan-500/20"
+                      >
+                        Solve
+                      </Link>
                     </td>
                   </tr>
                 ))}

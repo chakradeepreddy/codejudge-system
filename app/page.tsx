@@ -1,6 +1,7 @@
 import AppHeader from "@/app/components/layout/app-header";
 import ProblemWorkspace from "@/app/components/problem-workspace";
 import { createClient } from "@/lib/supabase/server";
+import { ensureSeedProblems } from "@/lib/seed-problems";
 import { redirect } from "next/navigation";
 
 type Problem = {
@@ -60,6 +61,8 @@ export default async function Home() {
     redirect("/login");
   }
 
+  await ensureSeedProblems(supabase);
+
   const { data: problem } = await supabase
     .from("problems")
     .select("id,title,statement,difficulty,tags,constraints_text,sample_explanation")
@@ -89,15 +92,31 @@ export default async function Home() {
     .order("ordinal", { ascending: true })
     .limit(3);
 
-  const { data: initialHistory } = await supabase
+  const historyBaseSelect =
+    "id,language,verdict,passed_test_cases,total_test_cases,runtime_ms,compile_output,error_output,source_code,submitted_at,problems(title)";
+  const historyExtendedSelect = `${historyBaseSelect},test_results,analysis`;
+
+  const extendedHistoryResult = await supabase
     .from("submissions")
-    .select(
-      "id,language,verdict,passed_test_cases,total_test_cases,runtime_ms,compile_output,error_output,source_code,submitted_at,test_results,analysis,problems(title)"
-    )
+    .select(historyExtendedSelect)
     .eq("user_id", user.id)
     .eq("problem_id", problem.id)
     .order("submitted_at", { ascending: false })
     .limit(20);
+
+  const baseHistoryResult = extendedHistoryResult.error
+    ? await supabase
+        .from("submissions")
+        .select(historyBaseSelect)
+        .eq("user_id", user.id)
+        .eq("problem_id", problem.id)
+        .order("submitted_at", { ascending: false })
+        .limit(20)
+    : null;
+
+  const initialHistory = extendedHistoryResult.error
+    ? baseHistoryResult?.data ?? []
+    : extendedHistoryResult.data ?? [];
 
   const p = problem as Problem;
 
@@ -106,6 +125,7 @@ export default async function Home() {
       <AppHeader subtitle="Practice Arena" userEmail={user.email} />
       <main className="mx-auto w-full max-w-[1600px] p-4 sm:p-6">
         <ProblemWorkspace
+          key={p.id}
           problemId={p.id}
           title={p.title}
           difficulty={p.difficulty}

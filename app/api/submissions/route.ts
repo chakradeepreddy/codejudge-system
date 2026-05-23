@@ -104,6 +104,103 @@ function estimateComplexity(sourceCode: string) {
   };
 }
 
+function maybeWrapCppLeetCodeSource(
+  problemSlug: string,
+  sourceCode: string
+) {
+  const hasMain = /\bint\s+main\s*\(/.test(sourceCode);
+  if (hasMain) return sourceCode;
+
+  const includeHeader = sourceCode.includes("#include")
+    ? ""
+    : "#include <bits/stdc++.h>\nusing namespace std;\n\n";
+
+  const wrappers: Record<string, string> = {
+    "two-sum": `
+int main() {
+  int n;
+  cin >> n;
+  vector<int> nums(n);
+  for (int i = 0; i < n; i++) cin >> nums[i];
+  int target;
+  cin >> target;
+  Solution sol;
+  auto ans = sol.twoSum(nums, target);
+  if (ans.empty()) cout << "-1 -1\\n";
+  else cout << ans[0] << " " << ans[1] << "\\n";
+  return 0;
+}`,
+    "valid-parentheses": `
+int main() {
+  string s;
+  cin >> s;
+  Solution sol;
+  cout << (sol.isValid(s) ? "true" : "false") << "\\n";
+  return 0;
+}`,
+    "longest-substring-without-repeating-characters": `
+int main() {
+  string s;
+  getline(cin, s);
+  if (s.empty()) getline(cin, s);
+  Solution sol;
+  cout << sol.lengthOfLongestSubstring(s) << "\\n";
+  return 0;
+}`,
+    "binary-search": `
+int main() {
+  int n;
+  cin >> n;
+  vector<int> nums(n);
+  for (int i = 0; i < n; i++) cin >> nums[i];
+  int target;
+  cin >> target;
+  Solution sol;
+  cout << sol.search(nums, target) << "\\n";
+  return 0;
+}`,
+    "best-time-to-buy-and-sell-stock": `
+int main() {
+  int n;
+  cin >> n;
+  vector<int> prices(n);
+  for (int i = 0; i < n; i++) cin >> prices[i];
+  Solution sol;
+  cout << sol.maxProfit(prices) << "\\n";
+  return 0;
+}`,
+    "maximum-subarray": `
+int main() {
+  int n;
+  cin >> n;
+  vector<int> nums(n);
+  for (int i = 0; i < n; i++) cin >> nums[i];
+  Solution sol;
+  cout << sol.maxSubArray(nums) << "\\n";
+  return 0;
+}`,
+    "product-of-array-except-self": `
+int main() {
+  int n;
+  cin >> n;
+  vector<int> nums(n);
+  for (int i = 0; i < n; i++) cin >> nums[i];
+  Solution sol;
+  auto ans = sol.productExceptSelf(nums);
+  for (int i = 0; i < (int)ans.size(); i++) {
+    if (i) cout << " ";
+    cout << ans[i];
+  }
+  cout << "\\n";
+  return 0;
+}`,
+  };
+
+  const wrapper = wrappers[problemSlug];
+  if (!wrapper) return sourceCode;
+  return `${includeHeader}${sourceCode}\n\n${wrapper}\n`;
+}
+
 export async function POST(req: Request) {
   const parsed = submissionSchema.safeParse(await req.json());
   if (!parsed.success) {
@@ -123,6 +220,17 @@ export async function POST(req: Request) {
   }
 
   const { problemId, language, sourceCode, action, customInput } = parsed.data;
+
+  const { data: problemRow } = await supabase
+    .from("problems")
+    .select("id,slug")
+    .eq("id", problemId)
+    .single();
+  const problemSlug = problemRow?.slug ?? "";
+  const sourceForExecution =
+    language === "cpp"
+      ? maybeWrapCppLeetCodeSource(problemSlug, sourceCode)
+      : sourceCode;
 
   let testCaseQuery = supabase
     .from("test_cases")
@@ -189,7 +297,7 @@ export async function POST(req: Request) {
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({
           language,
-          sourceCode,
+          sourceCode: sourceForExecution,
           input: customInput,
         }),
         signal: controller.signal,
@@ -233,7 +341,7 @@ export async function POST(req: Request) {
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({
           language,
-          sourceCode,
+          sourceCode: sourceForExecution,
           input: testCase.input_data,
         }),
         signal: controller.signal,
@@ -338,23 +446,41 @@ export async function GET(req: Request) {
   const url = new URL(req.url);
   const problemId = url.searchParams.get("problemId");
 
-  let query = supabase
+  const baseSelect =
+    "id,problem_id,language,verdict,passed_test_cases,total_test_cases,runtime_ms,compile_output,error_output,source_code,submitted_at,problems(title)";
+  const extendedSelect = `${baseSelect},test_results,analysis`;
+
+  let queryWithExtended = supabase
     .from("submissions")
-    .select(
-      "id,problem_id,language,verdict,passed_test_cases,total_test_cases,runtime_ms,compile_output,error_output,source_code,submitted_at,test_results,analysis,problems(title)"
-    )
+    .select(extendedSelect)
     .eq("user_id", user.id)
     .order("submitted_at", { ascending: false })
     .limit(20);
 
   if (problemId) {
-    query = query.eq("problem_id", problemId);
+    queryWithExtended = queryWithExtended.eq("problem_id", problemId);
   }
 
-  const { data, error } = await query;
-  if (error) {
-    return NextResponse.json({ error: error.message }, { status: 500 });
+  const extendedResult = await queryWithExtended;
+  if (!extendedResult.error) {
+    return NextResponse.json({ submissions: extendedResult.data ?? [] });
   }
 
-  return NextResponse.json({ submissions: data ?? [] });
+  let queryWithBase = supabase
+    .from("submissions")
+    .select(baseSelect)
+    .eq("user_id", user.id)
+    .order("submitted_at", { ascending: false })
+    .limit(20);
+
+  if (problemId) {
+    queryWithBase = queryWithBase.eq("problem_id", problemId);
+  }
+
+  const baseResult = await queryWithBase;
+  if (baseResult.error) {
+    return NextResponse.json({ error: baseResult.error.message }, { status: 500 });
+  }
+
+  return NextResponse.json({ submissions: baseResult.data ?? [] });
 }

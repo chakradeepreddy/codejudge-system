@@ -113,7 +113,7 @@ export default function ProblemWorkspace({
   initialHistory = [],
 }: ProblemWorkspaceProps) {
   const [language, setLanguage] = useState<SupportedLanguage>("cpp");
-  const [code, setCode] = useState(getStarterCode("cpp"));
+  const [code, setCode] = useState(getStarterCode("cpp", title));
   const [loading, setLoading] = useState(false);
   const [result, setResult] = useState<VerdictResponse | null>(null);
   const [history, setHistory] = useState<SubmissionHistoryItem[]>(initialHistory);
@@ -322,7 +322,7 @@ export default function ProblemWorkspace({
               onChange={(event) => {
                 const nextLanguage = event.target.value as SupportedLanguage;
                 setLanguage(nextLanguage);
-                setCode(getStarterCode(nextLanguage));
+                setCode(getStarterCode(nextLanguage, title));
               }}
               className="rounded-md border border-token bg-black/10 px-2 py-1 text-xs text-token-secondary"
             >
@@ -343,7 +343,7 @@ export default function ProblemWorkspace({
           </div>
           <div className="flex items-center gap-2">
             <button
-              onClick={() => setCode(getStarterCode(language))}
+              onClick={() => setCode(getStarterCode(language, title))}
               className="rounded-md border border-token px-3 py-1.5 text-xs text-token-secondary transition hover:text-token-primary"
             >
               Reset
@@ -354,7 +354,7 @@ export default function ProblemWorkspace({
         </div>
 
         <div className="editor-shell mt-4 lg:min-h-0 lg:flex-1">
-          <CodeEditor language={language} value={code} onChange={setCode} />
+          <CodeEditor language={language} problemTitle={title} value={code} onChange={setCode} />
         </div>
 
         <div className="mt-4 rounded-lg border border-token bg-black/10 p-3 text-xs text-token-secondary">
