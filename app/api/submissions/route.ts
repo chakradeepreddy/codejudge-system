@@ -400,21 +400,33 @@ export async function POST(req: Request) {
   }
 
   if (action === "submit" && submissionId) {
-    const analysis = estimateComplexity(sourceCode);
+  const analysis = estimateComplexity(sourceCode);
+
+  const commonUpdatePayload = {
+    verdict,
+    passed_test_cases: passedTestCases,
+    total_test_cases: totalTestCases,
+    runtime_ms: runtimeMs,
+    compile_output: finalCompileStderr,
+    error_output: finalStderr,
+  };
+
+  const extendedUpdateResult = await supabase
+    .from("submissions")
+    .update({
+      ...commonUpdatePayload,
+      test_results: testCaseResults,
+      analysis,
+    })
+    .eq("id", submissionId);
+
+  if (extendedUpdateResult.error) {
     await supabase
       .from("submissions")
-      .update({
-        verdict,
-        passed_test_cases: passedTestCases,
-        total_test_cases: totalTestCases,
-        runtime_ms: runtimeMs,
-        compile_output: finalCompileStderr,
-        error_output: finalStderr,
-        test_results: testCaseResults,
-        analysis,
-      })
+      .update(commonUpdatePayload)
       .eq("id", submissionId);
   }
+}
 
   const analysis = estimateComplexity(sourceCode);
 
