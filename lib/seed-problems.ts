@@ -160,30 +160,61 @@ const SEED_CASES: SeedCase[] = [
 ];
 
 export async function ensureSeedProblems(supabase: SupabaseClient) {
-  await supabase
+  const seedSlugs = SEED_PROBLEMS.map((problem) => problem.slug);
+  const { data: existingProblems } = await supabase
     .from("problems")
-    .upsert(SEED_PROBLEMS, { onConflict: "slug", ignoreDuplicates: false });
+    .select("id,slug")
+    .in("slug", seedSlugs);
+
+  const existingSlugs = new Set((existingProblems ?? []).map((problem) => problem.slug));
+  const missingProblems = SEED_PROBLEMS.filter(
+    (problem) => !existingSlugs.has(problem.slug)
+  );
+
+  if (missingProblems.length > 0) {
+    await supabase.from("problems").insert(missingProblems);
+  }
 
   const { data: allSeededProblems } = await supabase
     .from("problems")
     .select("id,slug")
-    .in(
-      "slug",
-      SEED_PROBLEMS.map((problem) => problem.slug)
-    );
+    .in("slug", seedSlugs);
 
   const idBySlug = new Map((allSeededProblems ?? []).map((row) => [row.slug, row.id]));
-  const casesToInsert = SEED_CASES.map((testCase) => ({
-    problem_id: idBySlug.get(testCase.slug),
-    input_data: testCase.input_data,
-    expected_output: testCase.expected_output,
-    is_hidden: testCase.is_hidden,
-    ordinal: testCase.ordinal,
-  })).filter((testCase) => Boolean(testCase.problem_id));
+  const problemIds = Array.from(idBySlug.values());
+
+  if (problemIds.length === 0) return;
+
+  const { data: existingCases } = await supabase
+    .from("test_cases")
+    .select("problem_id,ordinal")
+    .in("problem_id", problemIds);
+
+  const existingCaseKeys = new Set(
+    (existingCases ?? []).map((testCase) => `${testCase.problem_id}:${testCase.ordinal}`)
+  );
+  const casesToInsert = SEED_CASES.map((testCase) => {
+    const problemId = idBySlug.get(testCase.slug);
+    return {
+      problem_id: problemId,
+      input_data: testCase.input_data,
+      expected_output: testCase.expected_output,
+      is_hidden: testCase.is_hidden,
+      ordinal: testCase.ordinal,
+    };
+  }).filter(
+    (testCase): testCase is {
+      problem_id: string;
+      input_data: string;
+      expected_output: string;
+      is_hidden: boolean;
+      ordinal: number;
+    } =>
+      Boolean(testCase.problem_id) &&
+      !existingCaseKeys.has(`${testCase.problem_id}:${testCase.ordinal}`)
+  );
 
   if (casesToInsert.length > 0) {
-    await supabase
-      .from("test_cases")
-      .upsert(casesToInsert, { onConflict: "problem_id,ordinal", ignoreDuplicates: false });
+    await supabase.from("test_cases").insert(casesToInsert);
   }
 }

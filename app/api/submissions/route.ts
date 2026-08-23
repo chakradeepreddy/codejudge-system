@@ -201,6 +201,188 @@ int main() {
   return `${includeHeader}${sourceCode}\n\n${wrapper}\n`;
 }
 
+function maybeWrapPythonLeetCodeSource(problemSlug: string, sourceCode: string) {
+  if (/\binput\s*\(|\bsys\.stdin\b|__name__\s*==\s*["']__main__["']/.test(sourceCode)) {
+    return sourceCode;
+  }
+
+  const wrappers: Record<string, string> = {
+    "two-sum": `
+if __name__ == "__main__":
+    n = int(input())
+    nums = list(map(int, input().split()))
+    target = int(input())
+    answer = Solution().twoSum(nums, target)
+    print(*answer if answer else [-1, -1])`,
+    "valid-parentheses": `
+if __name__ == "__main__":
+    print(str(Solution().isValid(input().strip())).lower())`,
+    "longest-substring-without-repeating-characters": `
+if __name__ == "__main__":
+    print(Solution().lengthOfLongestSubstring(input()))`,
+    "binary-search": `
+if __name__ == "__main__":
+    n = int(input())
+    nums = list(map(int, input().split()))
+    target = int(input())
+    print(Solution().search(nums, target))`,
+    "best-time-to-buy-and-sell-stock": `
+if __name__ == "__main__":
+    n = int(input())
+    prices = list(map(int, input().split()))
+    print(Solution().maxProfit(prices))`,
+    "maximum-subarray": `
+if __name__ == "__main__":
+    n = int(input())
+    nums = list(map(int, input().split()))
+    print(Solution().maxSubArray(nums))`,
+    "product-of-array-except-self": `
+if __name__ == "__main__":
+    n = int(input())
+    nums = list(map(int, input().split()))
+    print(*Solution().productExceptSelf(nums))`,
+  };
+
+  return wrappers[problemSlug] ? `${sourceCode}\n${wrappers[problemSlug]}\n` : sourceCode;
+}
+
+function maybeWrapJavaScriptLeetCodeSource(problemSlug: string, sourceCode: string) {
+  if (/\bprocess\.stdin\b|\breadFileSync\s*\(|\bconsole\.log\s*\(/.test(sourceCode)) {
+    return sourceCode;
+  }
+
+  const wrappers: Record<string, string> = {
+    "two-sum": `
+const lines = require("fs").readFileSync(0, "utf8").trim().split(/\\s+/);
+let index = 0;
+const n = Number(lines[index++]);
+const nums = Array.from({ length: n }, () => Number(lines[index++]));
+const target = Number(lines[index++]);
+console.log(twoSum(nums, target).join(" "));`,
+    "valid-parentheses": `
+const input = require("fs").readFileSync(0, "utf8").trim();
+console.log(isValid(input));`,
+    "longest-substring-without-repeating-characters": `
+const input = require("fs").readFileSync(0, "utf8").replace(/\\r?\\n$/, "");
+console.log(lengthOfLongestSubstring(input));`,
+    "binary-search": `
+const lines = require("fs").readFileSync(0, "utf8").trim().split(/\\s+/);
+let index = 0;
+const n = Number(lines[index++]);
+const nums = Array.from({ length: n }, () => Number(lines[index++]));
+const target = Number(lines[index++]);
+console.log(search(nums, target));`,
+    "best-time-to-buy-and-sell-stock": `
+const lines = require("fs").readFileSync(0, "utf8").trim().split(/\\s+/);
+const n = Number(lines[0]);
+const prices = lines.slice(1, n + 1).map(Number);
+console.log(maxProfit(prices));`,
+    "maximum-subarray": `
+const lines = require("fs").readFileSync(0, "utf8").trim().split(/\\s+/);
+const n = Number(lines[0]);
+const nums = lines.slice(1, n + 1).map(Number);
+console.log(maxSubArray(nums));`,
+    "product-of-array-except-self": `
+const lines = require("fs").readFileSync(0, "utf8").trim().split(/\\s+/);
+const n = Number(lines[0]);
+const nums = lines.slice(1, n + 1).map(Number);
+console.log(productExceptSelf(nums).join(" "));`,
+  };
+
+  return wrappers[problemSlug] ? `${sourceCode}\n${wrappers[problemSlug]}\n` : sourceCode;
+}
+
+function maybeWrapJavaLeetCodeSource(problemSlug: string, sourceCode: string) {
+  if (/\bstatic\s+void\s+main\s*\(/.test(sourceCode)) return sourceCode;
+
+  const wrappers: Record<string, string> = {
+    "two-sum": `
+class Main {
+  public static void main(String[] args) {
+    java.util.Scanner scanner = new java.util.Scanner(System.in);
+    int n = scanner.nextInt(); int[] nums = new int[n];
+    for (int i = 0; i < n; i++) nums[i] = scanner.nextInt();
+    int[] answer = new Solution().twoSum(nums, scanner.nextInt());
+    System.out.println(answer[0] + " " + answer[1]);
+  }
+}`,
+    "valid-parentheses": `
+class Main {
+  public static void main(String[] args) {
+    java.util.Scanner scanner = new java.util.Scanner(System.in);
+    System.out.println(new Solution().isValid(scanner.nextLine()));
+  }
+}`,
+    "longest-substring-without-repeating-characters": `
+class Main {
+  public static void main(String[] args) {
+    java.util.Scanner scanner = new java.util.Scanner(System.in);
+    System.out.println(new Solution().lengthOfLongestSubstring(scanner.nextLine()));
+  }
+}`,
+    "binary-search": `
+class Main {
+  public static void main(String[] args) {
+    java.util.Scanner scanner = new java.util.Scanner(System.in);
+    int n = scanner.nextInt(); int[] nums = new int[n];
+    for (int i = 0; i < n; i++) nums[i] = scanner.nextInt();
+    System.out.println(new Solution().search(nums, scanner.nextInt()));
+  }
+}`,
+    "best-time-to-buy-and-sell-stock": `
+class Main {
+  public static void main(String[] args) {
+    java.util.Scanner scanner = new java.util.Scanner(System.in);
+    int n = scanner.nextInt(); int[] prices = new int[n];
+    for (int i = 0; i < n; i++) prices[i] = scanner.nextInt();
+    System.out.println(new Solution().maxProfit(prices));
+  }
+}`,
+    "maximum-subarray": `
+class Main {
+  public static void main(String[] args) {
+    java.util.Scanner scanner = new java.util.Scanner(System.in);
+    int n = scanner.nextInt(); int[] nums = new int[n];
+    for (int i = 0; i < n; i++) nums[i] = scanner.nextInt();
+    System.out.println(new Solution().maxSubArray(nums));
+  }
+}`,
+    "product-of-array-except-self": `
+class Main {
+  public static void main(String[] args) {
+    java.util.Scanner scanner = new java.util.Scanner(System.in);
+    int n = scanner.nextInt(); int[] nums = new int[n];
+    for (int i = 0; i < n; i++) nums[i] = scanner.nextInt();
+    int[] answer = new Solution().productExceptSelf(nums);
+    for (int i = 0; i < answer.length; i++) {
+      if (i > 0) System.out.print(" ");
+      System.out.print(answer[i]);
+    }
+    System.out.println();
+  }
+}`,
+  };
+
+  return wrappers[problemSlug] ? `${sourceCode}\n${wrappers[problemSlug]}\n` : sourceCode;
+}
+
+function sourceForExecution(
+  language: "cpp" | "python" | "javascript" | "java",
+  problemSlug: string,
+  sourceCode: string
+) {
+  switch (language) {
+    case "cpp":
+      return maybeWrapCppLeetCodeSource(problemSlug, sourceCode);
+    case "python":
+      return maybeWrapPythonLeetCodeSource(problemSlug, sourceCode);
+    case "javascript":
+      return maybeWrapJavaScriptLeetCodeSource(problemSlug, sourceCode);
+    case "java":
+      return maybeWrapJavaLeetCodeSource(problemSlug, sourceCode);
+  }
+}
+
 export async function POST(req: Request) {
   const parsed = submissionSchema.safeParse(await req.json());
   if (!parsed.success) {
@@ -227,10 +409,7 @@ export async function POST(req: Request) {
     .eq("id", problemId)
     .single();
   const problemSlug = problemRow?.slug ?? "";
-  const sourceForExecution =
-    language === "cpp"
-      ? maybeWrapCppLeetCodeSource(problemSlug, sourceCode)
-      : sourceCode;
+  const executableSource = sourceForExecution(language, problemSlug, sourceCode);
 
   let testCaseQuery = supabase
     .from("test_cases")
@@ -297,7 +476,7 @@ export async function POST(req: Request) {
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({
           language,
-          sourceCode: sourceForExecution,
+          sourceCode: executableSource,
           input: customInput,
         }),
         signal: controller.signal,
@@ -341,7 +520,7 @@ export async function POST(req: Request) {
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({
           language,
-          sourceCode: sourceForExecution,
+          sourceCode: executableSource,
           input: testCase.input_data,
         }),
         signal: controller.signal,

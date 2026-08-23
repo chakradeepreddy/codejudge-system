@@ -24,7 +24,8 @@ app.post("/execute", async (req, res) => {
     const result = await executeCode(parsed.data);
     return res.json(result);
 });
-app.use((err, _req, res) => {
+app.use((err, _req, res, _next) => {
+    void _next;
     const message = err instanceof Error ? err.message : "Unknown error";
     return res.status(500).json({ error: message });
 });

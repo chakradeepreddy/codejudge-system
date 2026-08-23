@@ -39,7 +39,6 @@ export default function AuthForm({ mode }: AuthFormProps) {
     }
 
     router.replace("/");
-    router.refresh();
   }
 
   return (
